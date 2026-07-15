@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学習管理 v2.0 (Firebase同期)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen">
+
+    <div class="max-w-3xl mx-auto p-4 md:p-8">
+        <header class="mb-6 text-center">
+            <h1 class="text-2xl font-extrabold text-slate-800"><i class="fas fa-cloud text-blue-600 mr-2"></i>学習管理 v2.0</h1>
+            <p class="text-xs text-slate-500 mt-1">スマホ・PC同期モード</p>
+        </header>
+
+        <nav class="flex gap-2 mb-6 bg-white p-2 rounded-xl shadow-sm border border-slate-200">
+            <button onclick="switchTab('tasks')" id="tab-tasks" class="tab-btn flex-1 py-2 rounded-lg font-bold text-sm bg-blue-600 text-white shadow transition"><i class="fas fa-check-square mr-1"></i> 今週のコアタスク</button>
+            <button onclick="switchTab('problems')" id="tab-problems" class="tab-btn flex-1 py-2 rounded-lg font-bold text-sm text-slate-600 hover:bg-slate-100 transition"><i class="fas fa-tasks mr-1"></i> 問題集進捗</button>
+        </nav>
+
+        <main class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-6 min-h-[400px]">
+            
+            <div id="view-tasks" class="view-section">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold"><i class="fas fa-calendar-day text-blue-500 mr-2"></i>やるべきこと</h2>
+                    <button onclick="addTaskPrompt()" class="bg-slate-800 text-white px-3 py-1.5 text-xs rounded-lg hover:bg-slate-700 transition"><i class="fas fa-plus mr-1"></i>追加</button>
+                </div>
+                <div id="tasks-loading" class="text-center py-8 text-slate-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="text-sm mt-2">同期中...</p></div>
+                <ul id="task-list" class="space-y-3 hidden"></ul>
+            </div>
+
+            <div id="view-problems" class="view-section hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold"><i class="fas fa-book-open text-indigo-500 mr-2"></i>重要問題集</h2>
+                </div>
+                <div id="problems-loading" class="text-center py-8 text-slate-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="text-sm mt-2">同期中...</p></div>
+                
+                <div id="problems-container" class="space-y-4 hidden">
+                    <div id="book-physics" class="border rounded-xl p-4"></div>
+                    <div id="book-chemistry" class="border rounded-xl p-4"></div>
+                    <div id="book-math" class="border rounded-xl p-4"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, query, orderBy, serverTimestamp } 
+        from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        // ==========================================
+        // 1. Firebaseの設定（ご提供いただいた情報）
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAHEmvWJHm6xCPUuFJxEqoD0aYQkKkN9Y0",
+            authDomain: "study-app-2026-77be9.firebaseapp.com",
+            projectId: "study-app-2026-77be9",
+            storageBucket: "study-app-2026-77be9.firebasestorage.app",
+            messagingSenderId: "672102958440",
+            appId: "1:672102958440:web:c36330c72ab1f421a882dd",
+            measurementId: "G-5Y8ZREZTM7"
+        };
+
+        // FirebaseとFirestoreの初期化
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // コレクションの参照
+        const tasksCol = collection(db, "core_tasks");
+        const problemsCol = collection(db, "problem_progress");
+
+        // ==========================================
+        // 2. タスク管理 (Core Tasks)
+        // ==========================================
+        
+        // リアルタイムリスナー（データベースが更新されたら自動で画面に反映）
+        const qTasks = query(tasksCol, orderBy("createdAt", "desc"));
+        onSnapshot(qTasks, (snapshot) => {
+            document.getElementById('tasks-loading').classList.add('hidden');
+            const listEl = document.getElementById('task-list');
+            listEl.classList.remove('hidden');
+            listEl.innerHTML = '';
+            
+            if (snapshot.empty) {
+                listEl.innerHTML = '<li class="text-center text-slate-400 py-4 text-sm">タスクはありません。<br>右上の「追加」から登録してください。</li>';
+                return;
+            }
+
+            snapshot.forEach((docSnap) => {
+                const task = docSnap.data();
+                const id = docSnap.id;
+                
+                const li = document.createElement('li');
+                li.className = `flex items-start p-3 border rounded-xl transition ${task.completed ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-blue-100 shadow-sm'}`;
+                
+                li.innerHTML = `
+                    <input type="checkbox" ${task.completed ? 'checked' : ''} class="mt-1.5 w-5 h-5 cursor-pointer text-blue-600 rounded border-gray-300 focus:ring-blue-500 flex-shrink-0">
+                    <div class="ml-3 flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-0.5">
+                            <span class="text-[10px] font-bold px-2 py-0.5 bg-slate-200 text-slate-700 rounded">${task.subject}</span>
+                            ${task.date ? `<span class="text-[10px] text-slate-500">${task.date}</span>` : ''}
+                        </div>
+                        <div class="text-sm font-bold ${task.completed ? 'line-through text-slate-400' : 'text-slate-800'}">${task.title}</div>
+                    </div>
+                    <button class="ml-2 p-2 text-slate-300 hover:text-red-500 transition btn-delete"><i class="fas fa-trash-alt text-xs"></i></button>
+                `;
+
+                // チェックボックスのイベント
+                li.querySelector('input').addEventListener('change', (e) => {
+                    updateDoc(doc(db, "core_tasks", id), { completed: e.target.checked });
+                });
+
+                // 削除ボタンのイベント
+                li.querySelector('.btn-delete').addEventListener('click', () => {
+                    if(confirm('タスクを削除しますか？')) deleteDoc(doc(db, "core_tasks", id));
+                });
+
+                listEl.appendChild(li);
+            });
+        });
+
+        // タスク追加ボタンの処理（簡易的なプロンプトで追加）
+        window.addTaskPrompt = async () => {
+            const subject = prompt("科目名を入力してください (例: 数学, 物理, 英語)");
+            if (!subject) return;
+            const title = prompt("タスク内容を入力してください (例: 重要問題集 No.40〜45)");
+            if (!title) return;
+
+            // Firestoreに保存
+            await addDoc(tasksCol, {
+                subject: subject,
+                title: title,
+                date: new Date().toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
+                completed: false,
+                createdAt: serverTimestamp()
+            });
+        };
+
+        // ==========================================
+        // 3. UIのタブ切り替え制御
+        // ==========================================
+        window.switchTab = (tabId) => {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('bg-blue-600', 'text-white', 'shadow');
+                el.classList.add('text-slate-600', 'hover:bg-slate-100');
+            });
+            
+            const activeTab = document.getElementById(`tab-${tabId}`);
+            activeTab.classList.remove('text-slate-600', 'hover:bg-slate-100');
+            activeTab.classList.add('bg-blue-600', 'text-white', 'shadow');
+
+            // 問題集タブを開いた時の処理（モックデータの生成等。今回は簡略化のためUIのみ）
+            if(tabId === 'problems') {
+                document.getElementById('problems-loading').classList.add('hidden');
+                document.getElementById('problems-container').classList.remove('hidden');
+                
+                // ※ ここに本来は問題集(1〜160番など)の進捗グリッドを描画し、
+                // タスクと同様にFirestoreの updateDoc() で保存する処理を書きます。
+                // (今回はタスク管理の同期成功を優先して確認するため、プレースホルダーにしています)
+                document.getElementById('book-physics').innerHTML = '<h3 class="font-bold text-sm mb-2">物理 重要問題集</h3><p class="text-xs text-slate-500">※スマホ同期確認後、過去データを移行してここにグリッドを表示します。</p>';
+                document.getElementById('book-chemistry').innerHTML = '<h3 class="font-bold text-sm mb-2">化学 重要問題集</h3>';
+                document.getElementById('book-math').innerHTML = '<h3 class="font-bold text-sm mb-2">数学 重要問題集</h3>';
+            }
+        };
+    </script>
+</body>
+</html>
