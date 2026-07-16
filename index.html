@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>学習管理 v3.1</title>
+    <title>学習管理 v3.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .grid-jumon { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 0.5rem; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        /* 日付入力欄のデザイン調整 */
         input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; transition: 0.2s; }
         input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
     </style>
@@ -20,7 +19,7 @@
     <div id="login-screen" class="flex-1 flex flex-col items-center justify-center p-4">
         <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-sm w-full border border-slate-100">
             <i class="fas fa-lock text-4xl text-blue-500 mb-4"></i>
-            <h1 class="text-2xl font-bold text-slate-800 mb-2">学習管理 v3.1</h1>
+            <h1 class="text-2xl font-bold text-slate-800 mb-2">学習管理 v3.2</h1>
             <p class="text-sm text-slate-500 mb-6">本人確認が必要です</p>
             <button id="btn-login" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition shadow-md flex items-center justify-center">
                 <i class="fab fa-google mr-2"></i> Googleでログイン
@@ -31,7 +30,7 @@
     <div id="app-screen" class="hidden max-w-4xl mx-auto p-4 w-full">
         <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
             <div>
-                <h1 class="text-xl font-extrabold text-slate-800"><i class="fas fa-graduation-cap text-blue-600 mr-2"></i>学習管理 v3.1</h1>
+                <h1 class="text-xl font-extrabold text-slate-800"><i class="fas fa-graduation-cap text-blue-600 mr-2"></i>学習管理 v3.2</h1>
             </div>
             <div class="flex items-center gap-3">
                 <span id="user-name" class="text-xs font-bold text-slate-500 hidden md:inline"></span>
@@ -95,7 +94,7 @@
                 </div>
             </div>
 
-         <div id="view-problems" class="tab-content">
+            <div id="view-problems" class="tab-content">
                 <h2 class="text-lg font-bold mb-4"><i class="fas fa-book text-indigo-500 mr-2"></i>重要問題集 進捗</h2>
                 
                 <div class="flex flex-wrap items-center gap-4 mb-4">
@@ -156,7 +155,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, addDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, addDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAHEmvWJHm6xCPUuFJxEqoD0aYQkKkN9Y0",
@@ -185,7 +184,6 @@
         let currentWeekId = '';
         let allTasks = [];
 
-        // 初期設定
         document.getElementById('time-date').value = getLocalDateString();
         document.getElementById('ak-date').value = getLocalDateString();
         document.getElementById('read-start').value = getLocalDateString();
@@ -196,7 +194,7 @@
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('app-screen').classList.remove('hidden');
                 document.getElementById('user-name').innerText = user.displayName + " さん";
-                updateWeekDisplay(); // 週の計算と表示
+                updateWeekDisplay(); 
                 loadAllData();
             } else {
                 currentUser = null;
@@ -211,7 +209,7 @@
         const getUserRef = (path) => collection(db, "users", currentUser.uid, path);
 
         function loadAllData() {
-            // 1. タスク (全て取得してJavaScriptで週ごとにフィルタリング)
+            // 1. タスク
             onSnapshot(query(getUserRef("tasks"), orderBy("createdAt", "desc")), (snap) => {
                 allTasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderTasks();
@@ -231,7 +229,7 @@
                 }
             });
 
-            // 3. 学習時間 (日付でグループ化・合計計算)
+            // 3. 学習時間
             onSnapshot(query(getUserRef("study_time"), orderBy("date", "desc")), (snap) => {
                 const list = document.getElementById('time-list');
                 const grouped = {};
@@ -278,14 +276,29 @@
                 });
             });
 
-            // 5. 読書
+            // 5. 読書 (読了日数の自動計算を追加)
             onSnapshot(query(getUserRef("reading"), orderBy("createdAt", "desc")), (snap) => {
                 const list = document.getElementById('reading-list');
                 list.innerHTML = '';
                 snap.forEach(docSnap => {
                     const r = docSnap.data();
+                    let daysText = "";
+                    
+                    // 読了日数の計算処理
+                    if (r.start && r.end) {
+                        const sDate = new Date(r.start);
+                        const eDate = new Date(r.end);
+                        const diffDays = Math.floor((eDate - sDate) / (1000 * 60 * 60 * 24)) + 1;
+                        if (diffDays > 0) {
+                            daysText = `<span class="text-[10px] font-extrabold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded ml-2">(${diffDays}日間で読了)</span>`;
+                        }
+                    }
+
                     list.innerHTML += `<li class="p-3 border rounded-xl bg-white flex flex-col gap-2 shadow-sm">
-                        <div class="flex justify-between font-bold text-sm text-slate-800"><span>${r.title}</span><button onclick="delDoc('reading', '${docSnap.id}')" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button></div>
+                        <div class="flex justify-between font-bold text-sm text-slate-800">
+                            <span>${r.title} ${daysText}</span>
+                            <button onclick="delDoc('reading', '${docSnap.id}')" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button>
+                        </div>
                         <div class="text-[11px] text-slate-500">開始: ${r.start}</div>
                         <div class="flex items-center justify-between text-xs font-bold bg-slate-50 p-2 rounded">
                             <span class="text-slate-600">読了日</span>
@@ -306,14 +319,13 @@
         function updateWeekDisplay() {
             const now = new Date();
             const day = now.getDay();
-            // 月曜日を週の始まりとする計算
             const diff = now.getDate() - day + (day === 0 ? -6 : 1) + (weekOffset * 7);
             const monday = new Date(now.setDate(diff));
             const sunday = new Date(monday);
             sunday.setDate(monday.getDate() + 6);
 
             document.getElementById('task-week-label').innerText = `${monday.getMonth()+1}/${monday.getDate()} 〜 ${sunday.getMonth()+1}/${sunday.getDate()}`;
-            currentWeekId = getLocalDateString(monday); // "YYYY-MM-DD" 形式で週IDを管理
+            currentWeekId = getLocalDateString(monday);
             renderTasks();
         }
 
@@ -327,7 +339,6 @@
             const empty = document.getElementById('task-empty');
             list.innerHTML = '';
             
-            // 現在の週IDと一致するタスクだけを抽出
             const weeklyTasks = allTasks.filter(t => t.weekId === currentWeekId);
             
             if(weeklyTasks.length === 0) {
@@ -348,6 +359,7 @@
             }
         }
 
+        // バグ修正: serverTimestamp() から Date.now() へ変更し、確実な保存と並び替えを実現
         window.addTask = async () => {
             const sub = prompt("科目 (例: 数学):"); if(!sub) return;
             const ttl = prompt("タスク内容:"); if(!ttl) return;
@@ -355,17 +367,17 @@
                 subject: sub, 
                 title: ttl, 
                 completed: false, 
-                weekId: currentWeekId, // 開いている週に紐付ける
-                createdAt: serverTimestamp() 
+                weekId: currentWeekId,
+                createdAt: Date.now() 
             });
         };
 
-        // --- データ更新・保存ロジック ---
+        // バグ修正: 保存ロジックも Date.now() に統一し、アラートを出して確実なフィードバック
         window.saveMemo = async () => {
             const text = document.getElementById('daily-memo').value;
             const todayStr = getLocalDateString();
-            await setDoc(doc(db, "users", currentUser.uid, "daily_memos", todayStr), { text: text, date: todayStr, createdAt: serverTimestamp() });
-            alert("本日のメモを保存し、タスク画面に反映しました！");
+            await setDoc(doc(db, "users", currentUser.uid, "daily_memos", todayStr), { text: text, date: todayStr, createdAt: Date.now() });
+            alert("本日のメモを保存し、データベースに登録しました。");
         };
 
         window.addStudyTime = async () => {
@@ -374,7 +386,7 @@
             const h = document.getElementById('time-hours').value || 0;
             const m = document.getElementById('time-mins').value || 0;
             if(!d || !sub || (h==0 && m==0)) return alert("日付、科目、時間をすべて入力してください");
-            await addDoc(getUserRef("study_time"), { date: d, subject: sub, hours: h, mins: m, createdAt: serverTimestamp() });
+            await addDoc(getUserRef("study_time"), { date: d, subject: sub, hours: h, mins: m, createdAt: Date.now() });
             document.getElementById('time-subject').value=''; document.getElementById('time-hours').value=''; document.getElementById('time-mins').value='';
         };
 
@@ -385,24 +397,24 @@
             const typ = document.getElementById('ak-type').value;
             const sc = document.getElementById('ak-score').value;
             if(!d || !sub || !yr || !sc) return alert('必須項目を入力してください');
-            await addDoc(getUserRef("akahon"), { date: d, subject: sub, year: yr, type: typ, score: sc, createdAt: serverTimestamp() });
+            await addDoc(getUserRef("akahon"), { date: d, subject: sub, year: yr, type: typ, score: sc, createdAt: Date.now() });
             document.getElementById('ak-subject').value=''; document.getElementById('ak-year').value=''; document.getElementById('ak-score').value='';
         };
         window.updateAkahonDate = (id, val) => updateDoc(doc(db, "users", currentUser.uid, "akahon", id), { date: val });
 
-window.renderJumonGrid = () => {
+        // 重問のパーセンテージ・プログレスバー計算を追加
+        window.renderJumonGrid = () => {
             const subj = document.getElementById('jumon-select').value;
             const max = JUMON_MAX[subj];
             const data = jumonData[subj] || {};
             const grid = document.getElementById('jumon-grid');
             let html = '';
             
-            let completedCount = 0; // 完了数をカウントする変数を追加
+            let completedCount = 0; // 完了数をカウント
 
             for(let i=1; i<=max; i++){
                 const dateVal = (data[i] && data[i].includes('-')) ? data[i] : ''; 
-                
-                if (dateVal) completedCount++; // 日付が入っていればカウントを1増やす
+                if (dateVal) completedCount++; // 日付があればカウントアップ
 
                 const bg = dateVal ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 shadow-sm';
                 html += `<div class="border rounded-lg p-2 flex flex-col items-center ${bg} transition-colors">
@@ -412,7 +424,7 @@ window.renderJumonGrid = () => {
             }
             grid.innerHTML = html;
 
-            // パーセンテージを計算して画面（HTML）に反映させる処理を追加
+            // パーセンテージ計算と画面への反映
             const percentage = Math.floor((completedCount / max) * 100);
             document.getElementById('jumon-progress-text').innerText = `${completedCount} / ${max}問 (${percentage}%)`;
             document.getElementById('jumon-progress-bar').style.width = `${percentage}%`;
@@ -432,7 +444,7 @@ window.renderJumonGrid = () => {
             const ttl = document.getElementById('read-title').value;
             const st = document.getElementById('read-start').value;
             if(!ttl || !st) return alert("タイトルを入力してください");
-            await addDoc(getUserRef("reading"), { title: ttl, start: st, end: "", createdAt: serverTimestamp() });
+            await addDoc(getUserRef("reading"), { title: ttl, start: st, end: "", createdAt: Date.now() });
             document.getElementById('read-title').value='';
         };
         window.updateReadEnd = (id, val) => updateDoc(doc(db, "users", currentUser.uid, "reading", id), { end: val });
