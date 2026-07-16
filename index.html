@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>学習管理 v3.3</title>
+    <title>学習管理 v3.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -19,7 +19,7 @@
     <div id="login-screen" class="flex-1 flex flex-col items-center justify-center p-4">
         <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-sm w-full border border-slate-100">
             <i class="fas fa-lock text-4xl text-blue-500 mb-4"></i>
-            <h1 class="text-2xl font-bold text-slate-800 mb-2">学習管理 v3.3</h1>
+            <h1 class="text-2xl font-bold text-slate-800 mb-2">学習管理 v3.4</h1>
             <p class="text-sm text-slate-500 mb-6">本人確認が必要です</p>
             <button id="btn-login" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition shadow-md flex items-center justify-center">
                 <i class="fab fa-google mr-2"></i> Googleでログイン
@@ -30,7 +30,7 @@
     <div id="app-screen" class="hidden max-w-4xl mx-auto p-4 w-full">
         <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
             <div>
-                <h1 class="text-xl font-extrabold text-slate-800"><i class="fas fa-graduation-cap text-blue-600 mr-2"></i>学習管理 v3.3</h1>
+                <h1 class="text-xl font-extrabold text-slate-800"><i class="fas fa-graduation-cap text-blue-600 mr-2"></i>学習管理 v3.4</h1>
             </div>
             <div class="flex items-center gap-3">
                 <span id="user-name" class="text-xs font-bold text-slate-500 hidden md:inline"></span>
@@ -50,8 +50,8 @@
             
             <div id="view-tasks" class="tab-content active">
                 <div id="today-memo-container" class="hidden mb-6 bg-yellow-50 border border-yellow-200 p-4 rounded-xl shadow-sm">
-                    <h3 class="text-xs font-bold text-yellow-800 mb-1"><i class="fas fa-bell mr-1"></i>本日のスケジュール・メモ</h3>
-                    <p id="today-memo-display" class="text-sm text-yellow-900 whitespace-pre-wrap"></p>
+                    <h3 class="text-xs font-bold text-yellow-800 mb-2"><i class="fas fa-bell mr-1"></i>本日のスケジュール・メモ</h3>
+                    <p id="today-memo-display" class="text-sm text-yellow-900 whitespace-pre-wrap leading-relaxed"></p>
                 </div>
 
                 <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-3">
@@ -62,9 +62,14 @@
                         <span id="task-week-label" class="px-4 text-sm font-bold text-slate-700 w-40 text-center"></span>
                         <button onclick="changeWeek(1)" class="px-3 py-1 hover:bg-white rounded shadow-sm text-slate-600 transition"><i class="fas fa-chevron-right"></i></button>
                     </div>
-
-                    <button onclick="addTask()" class="w-full md:w-auto bg-slate-800 text-white px-4 py-2 text-xs rounded-lg hover:bg-slate-700 transition"><i class="fas fa-plus mr-1"></i>追加</button>
                 </div>
+
+                <div class="flex flex-col md:flex-row gap-2 mb-6 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <input type="text" id="new-task-subject" placeholder="科目 (例: 英語)" class="w-full md:w-1/4 p-2 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-300">
+                    <input type="text" id="new-task-title" placeholder="タスク内容を入力" class="w-full md:flex-1 p-2 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-300">
+                    <button onclick="addTask()" class="w-full md:w-auto bg-blue-600 text-white px-5 py-2 text-sm font-bold rounded-lg hover:bg-blue-700 transition">追加</button>
+                </div>
+
                 <ul id="task-list" class="space-y-3"></ul>
                 <div id="task-empty" class="hidden text-center py-8 text-slate-400 text-sm">この週のタスクはありません</div>
             </div>
@@ -73,8 +78,8 @@
                 <h2 class="text-lg font-bold mb-4"><i class="fas fa-calendar-day text-green-500 mr-2"></i>スケジュールと学習時間</h2>
                 <div class="grid md:grid-cols-2 gap-6">
                     <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col">
-                        <h3 class="text-sm font-bold mb-2">本日のスケジュール・メモ</h3>
-                        <textarea id="daily-memo" class="flex-1 w-full p-3 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-green-300 outline-none resize-none" placeholder="今日の予定を入力して保存すると、タスク画面に表示されます。"></textarea>
+                        <h3 class="text-sm font-bold mb-2">本日のスケジュール・メモ編集</h3>
+                        <textarea id="daily-memo" class="flex-1 w-full p-3 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-green-300 outline-none resize-none" placeholder="今日の予定を入力して保存すると、タスク画面の上部に表示されます。"></textarea>
                         <button onclick="saveMemo()" class="mt-3 w-full bg-green-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition"><i class="fas fa-save mr-1"></i>保存してタスク画面へ</button>
                     </div>
                     <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
@@ -174,7 +179,6 @@
         let jumonData = { physics: {}, chemistry: {}, math: {} };
         const JUMON_MAX = { physics: 162, chemistry: 270, math: 300 };
 
-        // 日付生成
         const getLocalDateString = (d = new Date()) => {
             return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         };
@@ -208,24 +212,34 @@
         const getUserRef = (path) => collection(db, "users", currentUser.uid, path);
 
         function loadAllData() {
-            // 1. タスク
+            // 1. タスクの同期
             onSnapshot(query(getUserRef("tasks"), orderBy("createdAt", "desc")), (snap) => {
                 allTasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderTasks();
             }, (error) => {
-                console.error("タスクの読み込みエラー:", error);
+                console.error("タスク読込エラー:", error);
             });
 
-            // 2. メモの同期（データベースの値をタスク画面に反映）
+            // 2. メモの完全な同期
             const todayStr = getLocalDateString();
             onSnapshot(doc(db, "users", currentUser.uid, "daily_memos", todayStr), (docSnap) => {
                 const text = docSnap.exists() ? docSnap.data().text : '';
                 const container = document.getElementById('today-memo-container');
+                const display = document.getElementById('today-memo-display');
+                const textarea = document.getElementById('daily-memo');
+                
+                // タスク上部の表示を更新
                 if(text) {
-                    document.getElementById('today-memo-display').innerText = text;
+                    display.innerText = text;
                     container.classList.remove('hidden');
                 } else {
                     container.classList.add('hidden');
+                }
+                
+                // テキストエリアにも値を反映（別端末で入力した場合に備えて）
+                // ただし、現在入力中の文字が消えないように、フォーカスが外れている時だけ反映する
+                if (document.activeElement !== textarea) {
+                    textarea.value = text;
                 }
             });
 
@@ -358,11 +372,19 @@
             }
         }
 
-        // 【修正】すべてのDB操作にエラー監視(try-catch)を追加しました
+        // 【修正】入力ボックスからのタスク追加
         window.addTask = async () => {
+            const subInput = document.getElementById('new-task-subject');
+            const ttlInput = document.getElementById('new-task-title');
+            const sub = subInput.value.trim();
+            const ttl = ttlInput.value.trim();
+
+            if(!sub || !ttl) {
+                alert("科目とタスク内容の両方を入力してください。");
+                return;
+            }
+
             try {
-                const sub = prompt("科目 (例: 数学):"); if(!sub) return;
-                const ttl = prompt("タスク内容:"); if(!ttl) return;
                 await addDoc(getUserRef("tasks"), { 
                     subject: sub, 
                     title: ttl, 
@@ -370,24 +392,32 @@
                     weekId: currentWeekId,
                     createdAt: Date.now() 
                 });
+                // 入力成功後にボックスを空にする
+                subInput.value = '';
+                ttlInput.value = '';
             } catch (e) {
-                alert("【追加エラー】\\n" + e.message + "\\n※Firebaseのセキュリティルールが正しく設定されていない可能性があります。");
+                alert("【タスク追加エラー】\\n" + e.message);
             }
         };
 
-        // 【修正】メモ保存後、入力欄を空にしてタスクタブに自動で切り替わります
+        // 【修正】メモ保存の完全な同期
         window.saveMemo = async () => {
+            const textarea = document.getElementById('daily-memo');
+            const text = textarea.value;
+            const todayStr = getLocalDateString();
+            
             try {
-                const text = document.getElementById('daily-memo').value;
-                if(!text) return alert("メモを入力してください");
-                const todayStr = getLocalDateString();
+                // merge: true を指定して安全に上書き保存
+                await setDoc(doc(db, "users", currentUser.uid, "daily_memos", todayStr), { 
+                    text: text, 
+                    date: todayStr, 
+                    updatedAt: Date.now() 
+                }, { merge: true });
                 
-                await setDoc(doc(db, "users", currentUser.uid, "daily_memos", todayStr), { text: text, date: todayStr, createdAt: Date.now() });
-                
-                document.getElementById('daily-memo').value = ""; // 入力欄をクリア
-                window.switchTab('tasks'); // タスクタブへ自動ジャンプ
+                // 保存に成功したら自動的にタスクタブへ移動
+                window.switchTab('tasks');
             } catch (e) {
-                alert("【保存エラー】\\n" + e.message + "\\n※Firebaseのセキュリティルールが正しく設定されていない可能性があります。");
+                alert("【メモ保存エラー】\\n" + e.message);
             }
         };
 
