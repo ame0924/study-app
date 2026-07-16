@@ -3,22 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>学習管理 v3.0 (本番環境)</title>
+    <title>学習管理 v3.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .grid-jumon { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 0.5rem; }
+        .grid-jumon { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 0.5rem; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+        /* 日付入力欄のデザイン調整 */
+        input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; transition: 0.2s; }
+        input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
 
-    <!-- ログイン前の画面 -->
     <div id="login-screen" class="flex-1 flex flex-col items-center justify-center p-4">
         <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-sm w-full border border-slate-100">
             <i class="fas fa-lock text-4xl text-blue-500 mb-4"></i>
-            <h1 class="text-2xl font-bold text-slate-800 mb-2">学習管理 v3.0</h1>
+            <h1 class="text-2xl font-bold text-slate-800 mb-2">学習管理 v3.1</h1>
             <p class="text-sm text-slate-500 mb-6">本人確認が必要です</p>
             <button id="btn-login" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition shadow-md flex items-center justify-center">
                 <i class="fab fa-google mr-2"></i> Googleでログイン
@@ -26,11 +28,10 @@
         </div>
     </div>
 
-    <!-- ログイン後のメインアプリ画面 -->
     <div id="app-screen" class="hidden max-w-4xl mx-auto p-4 w-full">
         <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
             <div>
-                <h1 class="text-xl font-extrabold text-slate-800"><i class="fas fa-graduation-cap text-blue-600 mr-2"></i>学習管理 v3.0</h1>
+                <h1 class="text-xl font-extrabold text-slate-800"><i class="fas fa-graduation-cap text-blue-600 mr-2"></i>学習管理 v3.1</h1>
             </div>
             <div class="flex items-center gap-3">
                 <span id="user-name" class="text-xs font-bold text-slate-500 hidden md:inline"></span>
@@ -38,7 +39,6 @@
             </div>
         </header>
 
-        <!-- タブナビゲーション -->
         <nav class="flex flex-wrap gap-2 mb-6 bg-white p-2 rounded-xl shadow-sm border border-slate-200">
             <button onclick="switchTab('tasks')" id="tab-tasks" class="tab-btn flex-1 min-w-[80px] py-2 rounded-lg font-bold text-xs md:text-sm bg-blue-600 text-white shadow transition"><i class="fas fa-check-square md:mr-1"></i><span class="hidden md:inline"> タスク</span></button>
             <button onclick="switchTab('schedule')" id="tab-schedule" class="tab-btn flex-1 min-w-[80px] py-2 rounded-lg font-bold text-xs md:text-sm text-slate-600 hover:bg-slate-100 transition"><i class="fas fa-clock md:mr-1"></i><span class="hidden md:inline"> 時間/予定</span></button>
@@ -49,77 +49,103 @@
 
         <main class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-6 min-h-[500px]">
             
-            <!-- ① タスクタブ -->
             <div id="view-tasks" class="tab-content active">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-bold"><i class="fas fa-tasks text-blue-500 mr-2"></i>今週のコアタスク</h2>
-                    <button onclick="addTask()" class="bg-slate-800 text-white px-3 py-1.5 text-xs rounded-lg hover:bg-slate-700 transition"><i class="fas fa-plus mr-1"></i>追加</button>
+                <div id="today-memo-container" class="hidden mb-6 bg-yellow-50 border border-yellow-200 p-4 rounded-xl shadow-sm">
+                    <h3 class="text-xs font-bold text-yellow-800 mb-1"><i class="fas fa-bell mr-1"></i>本日のスケジュール・メモ</h3>
+                    <p id="today-memo-display" class="text-sm text-yellow-900 whitespace-pre-wrap"></p>
+                </div>
+
+                <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-3">
+                    <h2 class="text-lg font-bold"><i class="fas fa-tasks text-blue-500 mr-2"></i>コアタスク</h2>
+                    
+                    <div class="flex items-center bg-slate-100 rounded-lg p-1">
+                        <button onclick="changeWeek(-1)" class="px-3 py-1 hover:bg-white rounded shadow-sm text-slate-600 transition"><i class="fas fa-chevron-left"></i></button>
+                        <span id="task-week-label" class="px-4 text-sm font-bold text-slate-700 w-40 text-center"></span>
+                        <button onclick="changeWeek(1)" class="px-3 py-1 hover:bg-white rounded shadow-sm text-slate-600 transition"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+
+                    <button onclick="addTask()" class="w-full md:w-auto bg-slate-800 text-white px-4 py-2 text-xs rounded-lg hover:bg-slate-700 transition"><i class="fas fa-plus mr-1"></i>追加</button>
                 </div>
                 <ul id="task-list" class="space-y-3"></ul>
+                <div id="task-empty" class="hidden text-center py-8 text-slate-400 text-sm">この週のタスクはありません</div>
             </div>
 
-            <!-- ② 時間・スケジュールタブ (ざっくり予定＋学習時間) -->
             <div id="view-schedule" class="tab-content">
-                <h2 class="text-lg font-bold mb-4"><i class="fas fa-calendar-day text-green-500 mr-2"></i>本日のスケジュールと学習時間</h2>
+                <h2 class="text-lg font-bold mb-4"><i class="fas fa-calendar-day text-green-500 mr-2"></i>スケジュールと学習時間</h2>
                 <div class="grid md:grid-cols-2 gap-6">
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                        <h3 class="text-sm font-bold mb-2">ざっくりスケジュール・メモ</h3>
-                        <textarea id="daily-memo" class="w-full h-32 p-3 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-green-300 outline-none resize-none" placeholder="例: 10:00〜12:00 数学、午後は買い物、夜に過去問..."></textarea>
-                        <button onclick="saveMemo()" class="mt-2 w-full bg-green-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition">メモを保存</button>
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col">
+                        <h3 class="text-sm font-bold mb-2">本日のスケジュール・メモ</h3>
+                        <textarea id="daily-memo" class="flex-1 w-full p-3 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-green-300 outline-none resize-none" placeholder="ここに書いたメモは、今日1日だけタスク画面の上に表示されます！"></textarea>
+                        <button onclick="saveMemo()" class="mt-3 w-full bg-green-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition">メモを保存して反映</button>
                     </div>
                     <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                        <h3 class="text-sm font-bold mb-2">学習時間の記録を追加</h3>
+                        <h3 class="text-sm font-bold mb-2">学習時間の記録</h3>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <input type="date" id="time-date" class="w-full md:w-auto flex-1 p-2 text-sm border rounded-lg outline-none">
+                            <input type="text" id="time-subject" placeholder="科目 (例: 数学)" class="w-full md:w-auto flex-1 p-2 text-sm border rounded-lg outline-none">
+                        </div>
                         <div class="flex gap-2 mb-3">
-                            <input type="date" id="time-date" class="flex-1 p-2 text-sm border rounded-lg outline-none">
-                            <input type="number" id="time-hours" placeholder="時間" class="w-16 p-2 text-sm border rounded-lg outline-none" min="0">
-                            <input type="number" id="time-mins" placeholder="分" class="w-16 p-2 text-sm border rounded-lg outline-none" min="0" max="59">
+                            <input type="number" id="time-hours" placeholder="時間" class="w-1/2 p-2 text-sm border rounded-lg outline-none" min="0">
+                            <input type="number" id="time-mins" placeholder="分" class="w-1/2 p-2 text-sm border rounded-lg outline-none" min="0" max="59">
                         </div>
                         <button onclick="addStudyTime()" class="w-full bg-green-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition mb-4">記録する</button>
-                        <ul id="time-list" class="space-y-2 text-sm h-32 overflow-y-auto"></ul>
+                        
+                        <div id="time-list" class="space-y-4 h-64 overflow-y-auto pr-2"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- ③ 重要問題集タブ -->
-            <div id="view-problems" class="tab-content">
+         <div id="view-problems" class="tab-content">
                 <h2 class="text-lg font-bold mb-4"><i class="fas fa-book text-indigo-500 mr-2"></i>重要問題集 進捗</h2>
-                <select id="jumon-select" onchange="renderJumonGrid()" class="mb-4 p-2 border rounded-lg outline-none text-sm font-bold bg-slate-50">
-                    <option value="physics">物理 (全162問)</option>
-                    <option value="chemistry">化学 (全270問)</option>
-                    <option value="math">数学 (全300問)</option>
-                </select>
+                
+                <div class="flex flex-wrap items-center gap-4 mb-4">
+                    <select id="jumon-select" onchange="renderJumonGrid()" class="p-2 border rounded-lg outline-none text-sm font-bold bg-slate-50">
+                        <option value="physics">物理 (全162問)</option>
+                        <option value="chemistry">化学 (全270問)</option>
+                        <option value="math">数学 (全300問)</option>
+                    </select>
+                    
+                    <div class="flex-1 min-w-[200px] max-w-md">
+                        <div class="flex justify-between text-xs font-bold text-indigo-800 mb-1">
+                            <span id="jumon-progress-text">0 / 0問 (0%)</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-2.5">
+                            <div id="jumon-progress-bar" class="bg-indigo-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="jumon-grid" class="grid-jumon"></div>
             </div>
 
-            <!-- ④ 赤本タブ -->
             <div id="view-akahon" class="tab-content">
                 <h2 class="text-lg font-bold mb-4"><i class="fas fa-book-medical text-red-500 mr-2"></i>赤本 実施記録</h2>
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 flex flex-wrap gap-2 items-end">
+                    <div class="w-32"><label class="text-xs font-bold text-slate-500 block mb-1">実施日</label><input type="date" id="ak-date" class="w-full p-2 text-sm border rounded-lg"></div>
                     <div class="flex-1 min-w-[100px]"><label class="text-xs font-bold text-slate-500 block mb-1">科目</label><input type="text" id="ak-subject" placeholder="例: 英語" class="w-full p-2 text-sm border rounded-lg"></div>
-                    <div class="w-24"><label class="text-xs font-bold text-slate-500 block mb-1">年度</label><input type="text" id="ak-year" placeholder="2025" class="w-full p-2 text-sm border rounded-lg"></div>
+                    <div class="w-20"><label class="text-xs font-bold text-slate-500 block mb-1">年度</label><input type="text" id="ak-year" placeholder="2025" class="w-full p-2 text-sm border rounded-lg"></div>
                     <div class="w-24"><label class="text-xs font-bold text-slate-500 block mb-1">種別</label>
                         <select id="ak-type" class="w-full p-2 text-sm border rounded-lg"><option>本試</option><option>追試</option><option>その他</option></select>
                     </div>
-                    <div class="w-24"><label class="text-xs font-bold text-slate-500 block mb-1">得点</label><input type="text" id="ak-score" placeholder="点数" class="w-full p-2 text-sm border rounded-lg"></div>
+                    <div class="w-20"><label class="text-xs font-bold text-slate-500 block mb-1">得点</label><input type="text" id="ak-score" placeholder="点数" class="w-full p-2 text-sm border rounded-lg"></div>
                     <button onclick="addAkahon()" class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-700 h-[38px]">記録</button>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left border-collapse">
                         <thead class="bg-slate-100 text-slate-600 border-b-2 border-slate-200">
-                            <tr><th class="p-3">実施日</th><th class="p-3">科目</th><th class="p-3">年度・種別</th><th class="p-3 text-right">得点</th><th class="p-3"></th></tr>
+                            <tr><th class="p-3 w-36">実施日 (変更可)</th><th class="p-3">科目</th><th class="p-3">年度・種別</th><th class="p-3 text-right">得点</th><th class="p-3"></th></tr>
                         </thead>
                         <tbody id="akahon-list" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- ⑤ 読書タブ -->
             <div id="view-reading" class="tab-content">
                 <h2 class="text-lg font-bold mb-4"><i class="fas fa-book-reader text-purple-500 mr-2"></i>読書記録</h2>
-                <div class="flex gap-2 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <input type="text" id="read-title" placeholder="本のタイトル" class="flex-1 p-2 text-sm border rounded-lg outline-none">
-                    <input type="date" id="read-start" class="w-32 p-2 text-sm border rounded-lg outline-none">
-                    <button onclick="addReading()" class="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-purple-700">追加</button>
+                <div class="flex flex-wrap gap-2 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <input type="text" id="read-title" placeholder="本のタイトル" class="flex-1 min-w-[200px] p-2 text-sm border rounded-lg outline-none">
+                    <input type="date" id="read-start" class="w-36 p-2 text-sm border rounded-lg outline-none">
+                    <button onclick="addReading()" class="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-purple-700">追加</button>
                 </div>
                 <ul id="reading-list" class="grid gap-3 md:grid-cols-2"></ul>
             </div>
@@ -130,9 +156,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, getDoc, addDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, addDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        // Firebase Config (ご提供いただいたもの)
         const firebaseConfig = {
             apiKey: "AIzaSyAHEmvWJHm6xCPUuFJxEqoD0aYQkKkN9Y0",
             authDomain: "study-app-2026-77be9.firebaseapp.com",
@@ -150,17 +175,28 @@
         let jumonData = { physics: {}, chemistry: {}, math: {} };
         const JUMON_MAX = { physics: 162, chemistry: 270, math: 300 };
 
-        // 今日の日付をセット
-        document.getElementById('time-date').valueAsDate = new Date();
-        document.getElementById('read-start').valueAsDate = new Date();
+        // 今日の日付を取得 (YYYY-MM-DD)
+        const getLocalDateString = (d = new Date()) => {
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        };
 
-        // 認証状態の監視
+        // 週間タスク管理用変数
+        let weekOffset = 0;
+        let currentWeekId = '';
+        let allTasks = [];
+
+        // 初期設定
+        document.getElementById('time-date').value = getLocalDateString();
+        document.getElementById('ak-date').value = getLocalDateString();
+        document.getElementById('read-start').value = getLocalDateString();
+
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('app-screen').classList.remove('hidden');
                 document.getElementById('user-name').innerText = user.displayName + " さん";
+                updateWeekDisplay(); // 週の計算と表示
                 loadAllData();
             } else {
                 currentUser = null;
@@ -169,52 +205,76 @@
             }
         });
 
-        // ログイン・ログアウト処理
         document.getElementById('btn-login').addEventListener('click', () => signInWithPopup(auth, new GoogleAuthProvider()));
         document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
 
-        // ユーザー専用の参照を取得する関数
         const getUserRef = (path) => collection(db, "users", currentUser.uid, path);
 
-        // データ読み込みとリアルタイム監視
         function loadAllData() {
-            // 1. タスク
+            // 1. タスク (全て取得してJavaScriptで週ごとにフィルタリング)
             onSnapshot(query(getUserRef("tasks"), orderBy("createdAt", "desc")), (snap) => {
-                const list = document.getElementById('task-list');
-                list.innerHTML = '';
-                snap.forEach(docSnap => {
-                    const t = docSnap.data();
-                    list.innerHTML += `
-                        <li class="flex items-start p-3 border rounded-xl ${t.completed ? 'bg-slate-50 opacity-60' : 'bg-white shadow-sm'}">
-                            <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${docSnap.id}', this.checked)" class="mt-1 w-5 h-5 cursor-pointer">
-                            <div class="ml-3 flex-1"><div class="text-[10px] bg-slate-200 px-2 py-0.5 rounded inline-block font-bold mb-1">${t.subject}</div><div class="text-sm font-bold ${t.completed?'line-through':''}">${t.title}</div></div>
-                            <button onclick="delTask('${docSnap.id}')" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button>
-                        </li>`;
-                });
+                allTasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderTasks();
             });
 
-            // 2. メモ
-            onSnapshot(doc(db, "users", currentUser.uid, "settings", "memo"), (docSnap) => {
-                if(docSnap.exists()) document.getElementById('daily-memo').value = docSnap.data().text || '';
+            // 2. 今日のメモ
+            const todayStr = getLocalDateString();
+            onSnapshot(doc(db, "users", currentUser.uid, "daily_memos", todayStr), (docSnap) => {
+                const text = docSnap.exists() ? docSnap.data().text : '';
+                document.getElementById('daily-memo').value = text;
+                const container = document.getElementById('today-memo-container');
+                if(text) {
+                    document.getElementById('today-memo-display').innerText = text;
+                    container.classList.remove('hidden');
+                } else {
+                    container.classList.add('hidden');
+                }
             });
 
-            // 3. 学習時間
+            // 3. 学習時間 (日付でグループ化・合計計算)
             onSnapshot(query(getUserRef("study_time"), orderBy("date", "desc")), (snap) => {
                 const list = document.getElementById('time-list');
-                list.innerHTML = '';
+                const grouped = {};
                 snap.forEach(docSnap => {
                     const d = docSnap.data();
-                    list.innerHTML += `<li class="flex justify-between border-b py-1"><span>${d.date}</span><span class="font-bold">${d.hours}時間${d.mins}分</span><button onclick="delDoc('study_time', '${docSnap.id}')" class="text-red-400 text-xs"><i class="fas fa-times"></i></button></li>`;
+                    if(!grouped[d.date]) grouped[d.date] = { totalMins: 0, items: [] };
+                    grouped[d.date].items.push({ id: docSnap.id, ...d });
+                    grouped[d.date].totalMins += (parseInt(d.hours||0)*60 + parseInt(d.mins||0));
                 });
+                
+                list.innerHTML = '';
+                for(const [date, group] of Object.entries(grouped)) {
+                    const th = Math.floor(group.totalMins / 60);
+                    const tm = group.totalMins % 60;
+                    let html = `<div class="mb-4 bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        <div class="bg-green-50 px-3 py-2 border-b border-slate-200 flex justify-between items-center">
+                            <span class="font-bold text-sm text-green-800"><i class="far fa-calendar-alt mr-1"></i>${date}</span>
+                            <span class="font-extrabold text-sm text-green-700">計 ${th}時間${tm}分</span>
+                        </div><div class="p-2 space-y-1">`;
+                    group.items.forEach(item => {
+                        html += `<div class="flex justify-between items-center text-xs px-2 py-1 bg-slate-50 rounded">
+                            <span class="font-bold text-slate-700 flex-1 truncate">${item.subject || '科目なし'}</span>
+                            <span class="text-slate-600 font-medium w-16 text-right">${item.hours}h ${item.mins}m</span>
+                            <button onclick="delDoc('study_time', '${item.id}')" class="ml-3 text-slate-300 hover:text-red-500"><i class="fas fa-times"></i></button>
+                        </div>`;
+                    });
+                    html += `</div></div>`;
+                    list.innerHTML += html;
+                }
             });
 
             // 4. 赤本
-            onSnapshot(query(getUserRef("akahon"), orderBy("createdAt", "desc")), (snap) => {
+            onSnapshot(query(getUserRef("akahon"), orderBy("date", "desc")), (snap) => {
                 const list = document.getElementById('akahon-list');
                 list.innerHTML = '';
                 snap.forEach(docSnap => {
                     const a = docSnap.data();
-                    list.innerHTML += `<tr class="bg-white hover:bg-slate-50"><td class="p-3">${a.date}</td><td class="p-3 font-bold">${a.subject}</td><td class="p-3">${a.year} ${a.type}</td><td class="p-3 text-right font-extrabold text-blue-600">${a.score}</td><td class="p-3 text-right"><button onclick="delDoc('akahon', '${docSnap.id}')" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button></td></tr>`;
+                    list.innerHTML += `<tr class="bg-white hover:bg-slate-50 border-b">
+                        <td class="p-2"><input type="date" value="${a.date}" onchange="updateAkahonDate('${docSnap.id}', this.value)" class="text-xs border p-1 rounded outline-none w-[110px]"></td>
+                        <td class="p-2 font-bold">${a.subject}</td><td class="p-2">${a.year} ${a.type}</td>
+                        <td class="p-2 text-right font-extrabold text-red-600">${a.score}</td>
+                        <td class="p-2 text-right"><button onclick="delDoc('akahon', '${docSnap.id}')" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button></td>
+                    </tr>`;
                 });
             });
 
@@ -224,87 +284,160 @@
                 list.innerHTML = '';
                 snap.forEach(docSnap => {
                     const r = docSnap.data();
-                    list.innerHTML += `<li class="p-3 border rounded-xl bg-white flex flex-col gap-2">
-                        <div class="flex justify-between font-bold text-sm"><span>${r.title}</span><button onclick="delDoc('reading', '${docSnap.id}')" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button></div>
-                        <div class="text-xs text-slate-500">開始: ${r.start}</div>
-                        <div class="flex items-center gap-2 text-xs font-bold">読了:<input type="date" value="${r.end || ''}" onchange="updateReadEnd('${docSnap.id}', this.value)" class="border p-1 rounded outline-none"></div>
+                    list.innerHTML += `<li class="p-3 border rounded-xl bg-white flex flex-col gap-2 shadow-sm">
+                        <div class="flex justify-between font-bold text-sm text-slate-800"><span>${r.title}</span><button onclick="delDoc('reading', '${docSnap.id}')" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button></div>
+                        <div class="text-[11px] text-slate-500">開始: ${r.start}</div>
+                        <div class="flex items-center justify-between text-xs font-bold bg-slate-50 p-2 rounded">
+                            <span class="text-slate-600">読了日</span>
+                            <input type="date" value="${r.end || ''}" onchange="updateReadEnd('${docSnap.id}', this.value)" class="border p-1 rounded outline-none w-28 text-slate-700">
+                        </div>
                     </li>`;
                 });
             });
 
-            // 6. 重要問題集のデータ取得
+            // 6. 重要問題集
             onSnapshot(doc(db, "users", currentUser.uid, "problems", "jumon"), (docSnap) => {
                 if(docSnap.exists()) jumonData = docSnap.data();
-                window.renderJumonGrid(); // データを取得したら再描画
+                window.renderJumonGrid();
             });
         }
 
-        // --- 各種追加・更新・削除ロジック ---
-        window.addTask = async () => {
-            const sub = prompt("科目:"); if(!sub) return;
-            const ttl = prompt("内容:"); if(!ttl) return;
-            await addDoc(getUserRef("tasks"), { subject: sub, title: ttl, completed: false, createdAt: serverTimestamp() });
+        // --- 週間タスクの制御ロジック ---
+        function updateWeekDisplay() {
+            const now = new Date();
+            const day = now.getDay();
+            // 月曜日を週の始まりとする計算
+            const diff = now.getDate() - day + (day === 0 ? -6 : 1) + (weekOffset * 7);
+            const monday = new Date(now.setDate(diff));
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+
+            document.getElementById('task-week-label').innerText = `${monday.getMonth()+1}/${monday.getDate()} 〜 ${sunday.getMonth()+1}/${sunday.getDate()}`;
+            currentWeekId = getLocalDateString(monday); // "YYYY-MM-DD" 形式で週IDを管理
+            renderTasks();
+        }
+
+        window.changeWeek = (offset) => {
+            weekOffset += offset;
+            updateWeekDisplay();
         };
-        window.toggleTask = (id, checked) => updateDoc(doc(db, "users", currentUser.uid, "tasks", id), { completed: checked });
-        window.delTask = (id) => { if(confirm("削除しますか？")) deleteDoc(doc(db, "users", currentUser.uid, "tasks", id)); };
-        
-        window.saveMemo = () => setDoc(doc(db, "users", currentUser.uid, "settings", "memo"), { text: document.getElementById('daily-memo').value }, { merge: true });
-        
+
+        function renderTasks() {
+            const list = document.getElementById('task-list');
+            const empty = document.getElementById('task-empty');
+            list.innerHTML = '';
+            
+            // 現在の週IDと一致するタスクだけを抽出
+            const weeklyTasks = allTasks.filter(t => t.weekId === currentWeekId);
+            
+            if(weeklyTasks.length === 0) {
+                empty.classList.remove('hidden');
+            } else {
+                empty.classList.add('hidden');
+                weeklyTasks.forEach(t => {
+                    list.innerHTML += `
+                        <li class="flex items-start p-3 border rounded-xl transition ${t.completed ? 'bg-slate-50 opacity-60 border-slate-100' : 'bg-white shadow-sm border-blue-100'}">
+                            <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t.id}', this.checked)" class="mt-1 w-5 h-5 cursor-pointer text-blue-600 rounded border-gray-300">
+                            <div class="ml-3 flex-1 min-w-0">
+                                <div class="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded inline-block font-bold mb-1">${t.subject}</div>
+                                <div class="text-sm font-bold break-words ${t.completed?'line-through text-slate-400':''}">${t.title}</div>
+                            </div>
+                            <button onclick="delTask('${t.id}')" class="ml-2 text-slate-300 hover:text-red-500 p-1"><i class="fas fa-trash"></i></button>
+                        </li>`;
+                });
+            }
+        }
+
+        window.addTask = async () => {
+            const sub = prompt("科目 (例: 数学):"); if(!sub) return;
+            const ttl = prompt("タスク内容:"); if(!ttl) return;
+            await addDoc(getUserRef("tasks"), { 
+                subject: sub, 
+                title: ttl, 
+                completed: false, 
+                weekId: currentWeekId, // 開いている週に紐付ける
+                createdAt: serverTimestamp() 
+            });
+        };
+
+        // --- データ更新・保存ロジック ---
+        window.saveMemo = async () => {
+            const text = document.getElementById('daily-memo').value;
+            const todayStr = getLocalDateString();
+            await setDoc(doc(db, "users", currentUser.uid, "daily_memos", todayStr), { text: text, date: todayStr, createdAt: serverTimestamp() });
+            alert("本日のメモを保存し、タスク画面に反映しました！");
+        };
+
         window.addStudyTime = async () => {
             const d = document.getElementById('time-date').value;
+            const sub = document.getElementById('time-subject').value;
             const h = document.getElementById('time-hours').value || 0;
             const m = document.getElementById('time-mins').value || 0;
-            if(!d || (h==0 && m==0)) return;
-            await addDoc(getUserRef("study_time"), { date: d, hours: h, mins: m, createdAt: serverTimestamp() });
-            document.getElementById('time-hours').value=''; document.getElementById('time-mins').value='';
+            if(!d || !sub || (h==0 && m==0)) return alert("日付、科目、時間をすべて入力してください");
+            await addDoc(getUserRef("study_time"), { date: d, subject: sub, hours: h, mins: m, createdAt: serverTimestamp() });
+            document.getElementById('time-subject').value=''; document.getElementById('time-hours').value=''; document.getElementById('time-mins').value='';
         };
 
         window.addAkahon = async () => {
+            const d = document.getElementById('ak-date').value;
             const sub = document.getElementById('ak-subject').value;
             const yr = document.getElementById('ak-year').value;
             const typ = document.getElementById('ak-type').value;
             const sc = document.getElementById('ak-score').value;
-            if(!sub || !yr || !sc) return alert('必須項目を入力してください');
-            await addDoc(getUserRef("akahon"), { subject: sub, year: yr, type: typ, score: sc, date: new Date().toLocaleDateString('ja-JP'), createdAt: serverTimestamp() });
+            if(!d || !sub || !yr || !sc) return alert('必須項目を入力してください');
+            await addDoc(getUserRef("akahon"), { date: d, subject: sub, year: yr, type: typ, score: sc, createdAt: serverTimestamp() });
             document.getElementById('ak-subject').value=''; document.getElementById('ak-year').value=''; document.getElementById('ak-score').value='';
         };
+        window.updateAkahonDate = (id, val) => updateDoc(doc(db, "users", currentUser.uid, "akahon", id), { date: val });
 
-        window.addReading = async () => {
-            const ttl = document.getElementById('read-title').value;
-            const st = document.getElementById('read-start').value;
-            if(!ttl || !st) return;
-            await addDoc(getUserRef("reading"), { title: ttl, start: st, end: "", createdAt: serverTimestamp() });
-            document.getElementById('read-title').value='';
-        };
-        window.updateReadEnd = (id, val) => updateDoc(doc(db, "users", currentUser.uid, "reading", id), { end: val });
-
-        window.delDoc = (col, id) => { if(confirm("削除しますか？")) deleteDoc(doc(db, "users", currentUser.uid, col, id)); };
-
-        // 重要問題集のグリッド描画と更新
-        window.renderJumonGrid = () => {
+window.renderJumonGrid = () => {
             const subj = document.getElementById('jumon-select').value;
             const max = JUMON_MAX[subj];
             const data = jumonData[subj] || {};
             const grid = document.getElementById('jumon-grid');
             let html = '';
+            
+            let completedCount = 0; // 完了数をカウントする変数を追加
+
             for(let i=1; i<=max; i++){
-                const dateVal = data[i] || '';
-                const bg = dateVal ? 'bg-slate-100 opacity-60' : 'bg-white shadow-sm';
-                html += `<div class="border rounded-md p-1.5 flex flex-col ${bg}">
-                    <span class="text-[10px] font-bold text-slate-500 text-center mb-1">No.${i}</span>
-                    <input type="text" value="${dateVal}" placeholder="日付" onchange="updateJumon('${subj}', ${i}, this.value)" class="w-full text-[10px] p-1 text-center border rounded bg-transparent focus:bg-white outline-none">
+                const dateVal = (data[i] && data[i].includes('-')) ? data[i] : ''; 
+                
+                if (dateVal) completedCount++; // 日付が入っていればカウントを1増やす
+
+                const bg = dateVal ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 shadow-sm';
+                html += `<div class="border rounded-lg p-2 flex flex-col items-center ${bg} transition-colors">
+                    <span class="text-[10px] font-bold ${dateVal?'text-indigo-600':'text-slate-500'} mb-1">No.${i}</span>
+                    <input type="date" value="${dateVal}" onchange="updateJumon('${subj}', ${i}, this.value)" class="w-full text-[10px] p-1 border rounded bg-transparent outline-none">
                 </div>`;
             }
             grid.innerHTML = html;
+
+            // パーセンテージを計算して画面（HTML）に反映させる処理を追加
+            const percentage = Math.floor((completedCount / max) * 100);
+            document.getElementById('jumon-progress-text').innerText = `${completedCount} / ${max}問 (${percentage}%)`;
+            document.getElementById('jumon-progress-bar').style.width = `${percentage}%`;
         };
+
         window.updateJumon = async (subj, num, val) => {
             const ref = doc(db, "users", currentUser.uid, "problems", "jumon");
             if(!jumonData[subj]) jumonData[subj] = {};
-            jumonData[subj][num] = val; // ローカル更新
-            await setDoc(ref, jumonData, { merge: true }); // DBマージ
+            jumonData[subj][num] = val; 
+            await setDoc(ref, jumonData, { merge: true }); 
         };
 
-        // UIタブ切り替え
+        window.toggleTask = (id, checked) => updateDoc(doc(db, "users", currentUser.uid, "tasks", id), { completed: checked });
+        window.delTask = (id) => { if(confirm("タスクを削除しますか？")) deleteDoc(doc(db, "users", currentUser.uid, "tasks", id)); };
+        
+        window.addReading = async () => {
+            const ttl = document.getElementById('read-title').value;
+            const st = document.getElementById('read-start').value;
+            if(!ttl || !st) return alert("タイトルを入力してください");
+            await addDoc(getUserRef("reading"), { title: ttl, start: st, end: "", createdAt: serverTimestamp() });
+            document.getElementById('read-title').value='';
+        };
+        window.updateReadEnd = (id, val) => updateDoc(doc(db, "users", currentUser.uid, "reading", id), { end: val });
+        window.delDoc = (col, id) => { if(confirm("削除しますか？")) deleteDoc(doc(db, "users", currentUser.uid, col, id)); };
+
         window.switchTab = (tabId) => {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById(`view-${tabId}`).classList.add('active');
