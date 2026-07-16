@@ -3,57 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>学習管理 v2.0 (Firebase同期)</title>
+    <title>学習管理 v3.0 (本番環境)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .grid-jumon { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 0.5rem; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen">
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
 
-    <div class="max-w-3xl mx-auto p-4 md:p-8">
-        <header class="mb-6 text-center">
-            <h1 class="text-2xl font-extrabold text-slate-800"><i class="fas fa-cloud text-blue-600 mr-2"></i>学習管理 v2.0</h1>
-            <p class="text-xs text-slate-500 mt-1">スマホ・PC同期モード</p>
+    <!-- ログイン前の画面 -->
+    <div id="login-screen" class="flex-1 flex flex-col items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-sm w-full border border-slate-100">
+            <i class="fas fa-lock text-4xl text-blue-500 mb-4"></i>
+            <h1 class="text-2xl font-bold text-slate-800 mb-2">学習管理 v3.0</h1>
+            <p class="text-sm text-slate-500 mb-6">本人確認が必要です</p>
+            <button id="btn-login" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition shadow-md flex items-center justify-center">
+                <i class="fab fa-google mr-2"></i> Googleでログイン
+            </button>
+        </div>
+    </div>
+
+    <!-- ログイン後のメインアプリ画面 -->
+    <div id="app-screen" class="hidden max-w-4xl mx-auto p-4 w-full">
+        <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <div>
+                <h1 class="text-xl font-extrabold text-slate-800"><i class="fas fa-graduation-cap text-blue-600 mr-2"></i>学習管理 v3.0</h1>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="user-name" class="text-xs font-bold text-slate-500 hidden md:inline"></span>
+                <button id="btn-logout" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg transition"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
         </header>
 
-        <nav class="flex gap-2 mb-6 bg-white p-2 rounded-xl shadow-sm border border-slate-200">
-            <button onclick="switchTab('tasks')" id="tab-tasks" class="tab-btn flex-1 py-2 rounded-lg font-bold text-sm bg-blue-600 text-white shadow transition"><i class="fas fa-check-square mr-1"></i> 今週のコアタスク</button>
-            <button onclick="switchTab('problems')" id="tab-problems" class="tab-btn flex-1 py-2 rounded-lg font-bold text-sm text-slate-600 hover:bg-slate-100 transition"><i class="fas fa-tasks mr-1"></i> 問題集進捗</button>
+        <!-- タブナビゲーション -->
+        <nav class="flex flex-wrap gap-2 mb-6 bg-white p-2 rounded-xl shadow-sm border border-slate-200">
+            <button onclick="switchTab('tasks')" id="tab-tasks" class="tab-btn flex-1 min-w-[80px] py-2 rounded-lg font-bold text-xs md:text-sm bg-blue-600 text-white shadow transition"><i class="fas fa-check-square md:mr-1"></i><span class="hidden md:inline"> タスク</span></button>
+            <button onclick="switchTab('schedule')" id="tab-schedule" class="tab-btn flex-1 min-w-[80px] py-2 rounded-lg font-bold text-xs md:text-sm text-slate-600 hover:bg-slate-100 transition"><i class="fas fa-clock md:mr-1"></i><span class="hidden md:inline"> 時間/予定</span></button>
+            <button onclick="switchTab('problems')" id="tab-problems" class="tab-btn flex-1 min-w-[80px] py-2 rounded-lg font-bold text-xs md:text-sm text-slate-600 hover:bg-slate-100 transition"><i class="fas fa-book md:mr-1"></i><span class="hidden md:inline"> 重問</span></button>
+            <button onclick="switchTab('akahon')" id="tab-akahon" class="tab-btn flex-1 min-w-[80px] py-2 rounded-lg font-bold text-xs md:text-sm text-slate-600 hover:bg-slate-100 transition"><i class="fas fa-book-medical md:mr-1"></i><span class="hidden md:inline"> 赤本</span></button>
+            <button onclick="switchTab('reading')" id="tab-reading" class="tab-btn flex-1 min-w-[80px] py-2 rounded-lg font-bold text-xs md:text-sm text-slate-600 hover:bg-slate-100 transition"><i class="fas fa-book-reader md:mr-1"></i><span class="hidden md:inline"> 読書</span></button>
         </nav>
 
-        <main class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-6 min-h-[400px]">
+        <main class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-6 min-h-[500px]">
             
-            <div id="view-tasks" class="view-section">
+            <!-- ① タスクタブ -->
+            <div id="view-tasks" class="tab-content active">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-bold"><i class="fas fa-calendar-day text-blue-500 mr-2"></i>やるべきこと</h2>
-                    <button onclick="addTaskPrompt()" class="bg-slate-800 text-white px-3 py-1.5 text-xs rounded-lg hover:bg-slate-700 transition"><i class="fas fa-plus mr-1"></i>追加</button>
+                    <h2 class="text-lg font-bold"><i class="fas fa-tasks text-blue-500 mr-2"></i>今週のコアタスク</h2>
+                    <button onclick="addTask()" class="bg-slate-800 text-white px-3 py-1.5 text-xs rounded-lg hover:bg-slate-700 transition"><i class="fas fa-plus mr-1"></i>追加</button>
                 </div>
-                <div id="tasks-loading" class="text-center py-8 text-slate-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="text-sm mt-2">同期中...</p></div>
-                <ul id="task-list" class="space-y-3 hidden"></ul>
+                <ul id="task-list" class="space-y-3"></ul>
             </div>
 
-            <div id="view-problems" class="view-section hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-bold"><i class="fas fa-book-open text-indigo-500 mr-2"></i>重要問題集</h2>
-                </div>
-                <div id="problems-loading" class="text-center py-8 text-slate-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="text-sm mt-2">同期中...</p></div>
-                
-                <div id="problems-container" class="space-y-4 hidden">
-                    <div id="book-physics" class="border rounded-xl p-4"></div>
-                    <div id="book-chemistry" class="border rounded-xl p-4"></div>
-                    <div id="book-math" class="border rounded-xl p-4"></div>
+            <!-- ② 時間・スケジュールタブ (ざっくり予定＋学習時間) -->
+            <div id="view-schedule" class="tab-content">
+                <h2 class="text-lg font-bold mb-4"><i class="fas fa-calendar-day text-green-500 mr-2"></i>本日のスケジュールと学習時間</h2>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <h3 class="text-sm font-bold mb-2">ざっくりスケジュール・メモ</h3>
+                        <textarea id="daily-memo" class="w-full h-32 p-3 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-green-300 outline-none resize-none" placeholder="例: 10:00〜12:00 数学、午後は買い物、夜に過去問..."></textarea>
+                        <button onclick="saveMemo()" class="mt-2 w-full bg-green-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition">メモを保存</button>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <h3 class="text-sm font-bold mb-2">学習時間の記録を追加</h3>
+                        <div class="flex gap-2 mb-3">
+                            <input type="date" id="time-date" class="flex-1 p-2 text-sm border rounded-lg outline-none">
+                            <input type="number" id="time-hours" placeholder="時間" class="w-16 p-2 text-sm border rounded-lg outline-none" min="0">
+                            <input type="number" id="time-mins" placeholder="分" class="w-16 p-2 text-sm border rounded-lg outline-none" min="0" max="59">
+                        </div>
+                        <button onclick="addStudyTime()" class="w-full bg-green-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition mb-4">記録する</button>
+                        <ul id="time-list" class="space-y-2 text-sm h-32 overflow-y-auto"></ul>
+                    </div>
                 </div>
             </div>
+
+            <!-- ③ 重要問題集タブ -->
+            <div id="view-problems" class="tab-content">
+                <h2 class="text-lg font-bold mb-4"><i class="fas fa-book text-indigo-500 mr-2"></i>重要問題集 進捗</h2>
+                <select id="jumon-select" onchange="renderJumonGrid()" class="mb-4 p-2 border rounded-lg outline-none text-sm font-bold bg-slate-50">
+                    <option value="physics">物理 (全162問)</option>
+                    <option value="chemistry">化学 (全270問)</option>
+                    <option value="math">数学 (全300問)</option>
+                </select>
+                <div id="jumon-grid" class="grid-jumon"></div>
+            </div>
+
+            <!-- ④ 赤本タブ -->
+            <div id="view-akahon" class="tab-content">
+                <h2 class="text-lg font-bold mb-4"><i class="fas fa-book-medical text-red-500 mr-2"></i>赤本 実施記録</h2>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 flex flex-wrap gap-2 items-end">
+                    <div class="flex-1 min-w-[100px]"><label class="text-xs font-bold text-slate-500 block mb-1">科目</label><input type="text" id="ak-subject" placeholder="例: 英語" class="w-full p-2 text-sm border rounded-lg"></div>
+                    <div class="w-24"><label class="text-xs font-bold text-slate-500 block mb-1">年度</label><input type="text" id="ak-year" placeholder="2025" class="w-full p-2 text-sm border rounded-lg"></div>
+                    <div class="w-24"><label class="text-xs font-bold text-slate-500 block mb-1">種別</label>
+                        <select id="ak-type" class="w-full p-2 text-sm border rounded-lg"><option>本試</option><option>追試</option><option>その他</option></select>
+                    </div>
+                    <div class="w-24"><label class="text-xs font-bold text-slate-500 block mb-1">得点</label><input type="text" id="ak-score" placeholder="点数" class="w-full p-2 text-sm border rounded-lg"></div>
+                    <button onclick="addAkahon()" class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-700 h-[38px]">記録</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left border-collapse">
+                        <thead class="bg-slate-100 text-slate-600 border-b-2 border-slate-200">
+                            <tr><th class="p-3">実施日</th><th class="p-3">科目</th><th class="p-3">年度・種別</th><th class="p-3 text-right">得点</th><th class="p-3"></th></tr>
+                        </thead>
+                        <tbody id="akahon-list" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ⑤ 読書タブ -->
+            <div id="view-reading" class="tab-content">
+                <h2 class="text-lg font-bold mb-4"><i class="fas fa-book-reader text-purple-500 mr-2"></i>読書記録</h2>
+                <div class="flex gap-2 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <input type="text" id="read-title" placeholder="本のタイトル" class="flex-1 p-2 text-sm border rounded-lg outline-none">
+                    <input type="date" id="read-start" class="w-32 p-2 text-sm border rounded-lg outline-none">
+                    <button onclick="addReading()" class="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-purple-700">追加</button>
+                </div>
+                <ul id="reading-list" class="grid gap-3 md:grid-cols-2"></ul>
+            </div>
+
         </main>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, query, orderBy, serverTimestamp } 
-        from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, addDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        // ==========================================
-        // 1. Firebaseの設定（ご提供いただいた情報）
-        // ==========================================
+        // Firebase Config (ご提供いただいたもの)
         const firebaseConfig = {
             apiKey: "AIzaSyAHEmvWJHm6xCPUuFJxEqoD0aYQkKkN9Y0",
             authDomain: "study-app-2026-77be9.firebaseapp.com",
@@ -64,109 +143,178 @@
             measurementId: "G-5Y8ZREZTM7"
         };
 
-        // FirebaseとFirestoreの初期化
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const db = getFirestore(app);
+        let currentUser = null;
+        let jumonData = { physics: {}, chemistry: {}, math: {} };
+        const JUMON_MAX = { physics: 162, chemistry: 270, math: 300 };
 
-        // コレクションの参照
-        const tasksCol = collection(db, "core_tasks");
-        const problemsCol = collection(db, "problem_progress");
+        // 今日の日付をセット
+        document.getElementById('time-date').valueAsDate = new Date();
+        document.getElementById('read-start').valueAsDate = new Date();
 
-        // ==========================================
-        // 2. タスク管理 (Core Tasks)
-        // ==========================================
-        
-        // リアルタイムリスナー（データベースが更新されたら自動で画面に反映）
-        const qTasks = query(tasksCol, orderBy("createdAt", "desc"));
-        onSnapshot(qTasks, (snapshot) => {
-            document.getElementById('tasks-loading').classList.add('hidden');
-            const listEl = document.getElementById('task-list');
-            listEl.classList.remove('hidden');
-            listEl.innerHTML = '';
-            
-            if (snapshot.empty) {
-                listEl.innerHTML = '<li class="text-center text-slate-400 py-4 text-sm">タスクはありません。<br>右上の「追加」から登録してください。</li>';
-                return;
+        // 認証状態の監視
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('app-screen').classList.remove('hidden');
+                document.getElementById('user-name').innerText = user.displayName + " さん";
+                loadAllData();
+            } else {
+                currentUser = null;
+                document.getElementById('login-screen').classList.remove('hidden');
+                document.getElementById('app-screen').classList.add('hidden');
             }
-
-            snapshot.forEach((docSnap) => {
-                const task = docSnap.data();
-                const id = docSnap.id;
-                
-                const li = document.createElement('li');
-                li.className = `flex items-start p-3 border rounded-xl transition ${task.completed ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-blue-100 shadow-sm'}`;
-                
-                li.innerHTML = `
-                    <input type="checkbox" ${task.completed ? 'checked' : ''} class="mt-1.5 w-5 h-5 cursor-pointer text-blue-600 rounded border-gray-300 focus:ring-blue-500 flex-shrink-0">
-                    <div class="ml-3 flex-1 min-w-0">
-                        <div class="flex items-center gap-2 mb-0.5">
-                            <span class="text-[10px] font-bold px-2 py-0.5 bg-slate-200 text-slate-700 rounded">${task.subject}</span>
-                            ${task.date ? `<span class="text-[10px] text-slate-500">${task.date}</span>` : ''}
-                        </div>
-                        <div class="text-sm font-bold ${task.completed ? 'line-through text-slate-400' : 'text-slate-800'}">${task.title}</div>
-                    </div>
-                    <button class="ml-2 p-2 text-slate-300 hover:text-red-500 transition btn-delete"><i class="fas fa-trash-alt text-xs"></i></button>
-                `;
-
-                // チェックボックスのイベント
-                li.querySelector('input').addEventListener('change', (e) => {
-                    updateDoc(doc(db, "core_tasks", id), { completed: e.target.checked });
-                });
-
-                // 削除ボタンのイベント
-                li.querySelector('.btn-delete').addEventListener('click', () => {
-                    if(confirm('タスクを削除しますか？')) deleteDoc(doc(db, "core_tasks", id));
-                });
-
-                listEl.appendChild(li);
-            });
         });
 
-        // タスク追加ボタンの処理（簡易的なプロンプトで追加）
-        window.addTaskPrompt = async () => {
-            const subject = prompt("科目名を入力してください (例: 数学, 物理, 英語)");
-            if (!subject) return;
-            const title = prompt("タスク内容を入力してください (例: 重要問題集 No.40〜45)");
-            if (!title) return;
+        // ログイン・ログアウト処理
+        document.getElementById('btn-login').addEventListener('click', () => signInWithPopup(auth, new GoogleAuthProvider()));
+        document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
 
-            // Firestoreに保存
-            await addDoc(tasksCol, {
-                subject: subject,
-                title: title,
-                date: new Date().toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
-                completed: false,
-                createdAt: serverTimestamp()
+        // ユーザー専用の参照を取得する関数
+        const getUserRef = (path) => collection(db, "users", currentUser.uid, path);
+
+        // データ読み込みとリアルタイム監視
+        function loadAllData() {
+            // 1. タスク
+            onSnapshot(query(getUserRef("tasks"), orderBy("createdAt", "desc")), (snap) => {
+                const list = document.getElementById('task-list');
+                list.innerHTML = '';
+                snap.forEach(docSnap => {
+                    const t = docSnap.data();
+                    list.innerHTML += `
+                        <li class="flex items-start p-3 border rounded-xl ${t.completed ? 'bg-slate-50 opacity-60' : 'bg-white shadow-sm'}">
+                            <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${docSnap.id}', this.checked)" class="mt-1 w-5 h-5 cursor-pointer">
+                            <div class="ml-3 flex-1"><div class="text-[10px] bg-slate-200 px-2 py-0.5 rounded inline-block font-bold mb-1">${t.subject}</div><div class="text-sm font-bold ${t.completed?'line-through':''}">${t.title}</div></div>
+                            <button onclick="delTask('${docSnap.id}')" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button>
+                        </li>`;
+                });
             });
+
+            // 2. メモ
+            onSnapshot(doc(db, "users", currentUser.uid, "settings", "memo"), (docSnap) => {
+                if(docSnap.exists()) document.getElementById('daily-memo').value = docSnap.data().text || '';
+            });
+
+            // 3. 学習時間
+            onSnapshot(query(getUserRef("study_time"), orderBy("date", "desc")), (snap) => {
+                const list = document.getElementById('time-list');
+                list.innerHTML = '';
+                snap.forEach(docSnap => {
+                    const d = docSnap.data();
+                    list.innerHTML += `<li class="flex justify-between border-b py-1"><span>${d.date}</span><span class="font-bold">${d.hours}時間${d.mins}分</span><button onclick="delDoc('study_time', '${docSnap.id}')" class="text-red-400 text-xs"><i class="fas fa-times"></i></button></li>`;
+                });
+            });
+
+            // 4. 赤本
+            onSnapshot(query(getUserRef("akahon"), orderBy("createdAt", "desc")), (snap) => {
+                const list = document.getElementById('akahon-list');
+                list.innerHTML = '';
+                snap.forEach(docSnap => {
+                    const a = docSnap.data();
+                    list.innerHTML += `<tr class="bg-white hover:bg-slate-50"><td class="p-3">${a.date}</td><td class="p-3 font-bold">${a.subject}</td><td class="p-3">${a.year} ${a.type}</td><td class="p-3 text-right font-extrabold text-blue-600">${a.score}</td><td class="p-3 text-right"><button onclick="delDoc('akahon', '${docSnap.id}')" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button></td></tr>`;
+                });
+            });
+
+            // 5. 読書
+            onSnapshot(query(getUserRef("reading"), orderBy("createdAt", "desc")), (snap) => {
+                const list = document.getElementById('reading-list');
+                list.innerHTML = '';
+                snap.forEach(docSnap => {
+                    const r = docSnap.data();
+                    list.innerHTML += `<li class="p-3 border rounded-xl bg-white flex flex-col gap-2">
+                        <div class="flex justify-between font-bold text-sm"><span>${r.title}</span><button onclick="delDoc('reading', '${docSnap.id}')" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button></div>
+                        <div class="text-xs text-slate-500">開始: ${r.start}</div>
+                        <div class="flex items-center gap-2 text-xs font-bold">読了:<input type="date" value="${r.end || ''}" onchange="updateReadEnd('${docSnap.id}', this.value)" class="border p-1 rounded outline-none"></div>
+                    </li>`;
+                });
+            });
+
+            // 6. 重要問題集のデータ取得
+            onSnapshot(doc(db, "users", currentUser.uid, "problems", "jumon"), (docSnap) => {
+                if(docSnap.exists()) jumonData = docSnap.data();
+                window.renderJumonGrid(); // データを取得したら再描画
+            });
+        }
+
+        // --- 各種追加・更新・削除ロジック ---
+        window.addTask = async () => {
+            const sub = prompt("科目:"); if(!sub) return;
+            const ttl = prompt("内容:"); if(!ttl) return;
+            await addDoc(getUserRef("tasks"), { subject: sub, title: ttl, completed: false, createdAt: serverTimestamp() });
+        };
+        window.toggleTask = (id, checked) => updateDoc(doc(db, "users", currentUser.uid, "tasks", id), { completed: checked });
+        window.delTask = (id) => { if(confirm("削除しますか？")) deleteDoc(doc(db, "users", currentUser.uid, "tasks", id)); };
+        
+        window.saveMemo = () => setDoc(doc(db, "users", currentUser.uid, "settings", "memo"), { text: document.getElementById('daily-memo').value }, { merge: true });
+        
+        window.addStudyTime = async () => {
+            const d = document.getElementById('time-date').value;
+            const h = document.getElementById('time-hours').value || 0;
+            const m = document.getElementById('time-mins').value || 0;
+            if(!d || (h==0 && m==0)) return;
+            await addDoc(getUserRef("study_time"), { date: d, hours: h, mins: m, createdAt: serverTimestamp() });
+            document.getElementById('time-hours').value=''; document.getElementById('time-mins').value='';
         };
 
-        // ==========================================
-        // 3. UIのタブ切り替え制御
-        // ==========================================
+        window.addAkahon = async () => {
+            const sub = document.getElementById('ak-subject').value;
+            const yr = document.getElementById('ak-year').value;
+            const typ = document.getElementById('ak-type').value;
+            const sc = document.getElementById('ak-score').value;
+            if(!sub || !yr || !sc) return alert('必須項目を入力してください');
+            await addDoc(getUserRef("akahon"), { subject: sub, year: yr, type: typ, score: sc, date: new Date().toLocaleDateString('ja-JP'), createdAt: serverTimestamp() });
+            document.getElementById('ak-subject').value=''; document.getElementById('ak-year').value=''; document.getElementById('ak-score').value='';
+        };
+
+        window.addReading = async () => {
+            const ttl = document.getElementById('read-title').value;
+            const st = document.getElementById('read-start').value;
+            if(!ttl || !st) return;
+            await addDoc(getUserRef("reading"), { title: ttl, start: st, end: "", createdAt: serverTimestamp() });
+            document.getElementById('read-title').value='';
+        };
+        window.updateReadEnd = (id, val) => updateDoc(doc(db, "users", currentUser.uid, "reading", id), { end: val });
+
+        window.delDoc = (col, id) => { if(confirm("削除しますか？")) deleteDoc(doc(db, "users", currentUser.uid, col, id)); };
+
+        // 重要問題集のグリッド描画と更新
+        window.renderJumonGrid = () => {
+            const subj = document.getElementById('jumon-select').value;
+            const max = JUMON_MAX[subj];
+            const data = jumonData[subj] || {};
+            const grid = document.getElementById('jumon-grid');
+            let html = '';
+            for(let i=1; i<=max; i++){
+                const dateVal = data[i] || '';
+                const bg = dateVal ? 'bg-slate-100 opacity-60' : 'bg-white shadow-sm';
+                html += `<div class="border rounded-md p-1.5 flex flex-col ${bg}">
+                    <span class="text-[10px] font-bold text-slate-500 text-center mb-1">No.${i}</span>
+                    <input type="text" value="${dateVal}" placeholder="日付" onchange="updateJumon('${subj}', ${i}, this.value)" class="w-full text-[10px] p-1 text-center border rounded bg-transparent focus:bg-white outline-none">
+                </div>`;
+            }
+            grid.innerHTML = html;
+        };
+        window.updateJumon = async (subj, num, val) => {
+            const ref = doc(db, "users", currentUser.uid, "problems", "jumon");
+            if(!jumonData[subj]) jumonData[subj] = {};
+            jumonData[subj][num] = val; // ローカル更新
+            await setDoc(ref, jumonData, { merge: true }); // DBマージ
+        };
+
+        // UIタブ切り替え
         window.switchTab = (tabId) => {
-            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`view-${tabId}`).classList.remove('hidden');
-            
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(`view-${tabId}`).classList.add('active');
             document.querySelectorAll('.tab-btn').forEach(el => {
                 el.classList.remove('bg-blue-600', 'text-white', 'shadow');
                 el.classList.add('text-slate-600', 'hover:bg-slate-100');
             });
-            
-            const activeTab = document.getElementById(`tab-${tabId}`);
-            activeTab.classList.remove('text-slate-600', 'hover:bg-slate-100');
-            activeTab.classList.add('bg-blue-600', 'text-white', 'shadow');
-
-            // 問題集タブを開いた時の処理（モックデータの生成等。今回は簡略化のためUIのみ）
-            if(tabId === 'problems') {
-                document.getElementById('problems-loading').classList.add('hidden');
-                document.getElementById('problems-container').classList.remove('hidden');
-                
-                // ※ ここに本来は問題集(1〜160番など)の進捗グリッドを描画し、
-                // タスクと同様にFirestoreの updateDoc() で保存する処理を書きます。
-                // (今回はタスク管理の同期成功を優先して確認するため、プレースホルダーにしています)
-                document.getElementById('book-physics').innerHTML = '<h3 class="font-bold text-sm mb-2">物理 重要問題集</h3><p class="text-xs text-slate-500">※スマホ同期確認後、過去データを移行してここにグリッドを表示します。</p>';
-                document.getElementById('book-chemistry').innerHTML = '<h3 class="font-bold text-sm mb-2">化学 重要問題集</h3>';
-                document.getElementById('book-math').innerHTML = '<h3 class="font-bold text-sm mb-2">数学 重要問題集</h3>';
-            }
+            const active = document.getElementById(`tab-${tabId}`);
+            active.classList.remove('text-slate-600', 'hover:bg-slate-100');
+            active.classList.add('bg-blue-600', 'text-white', 'shadow');
         };
     </script>
 </body>
