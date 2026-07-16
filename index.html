@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>学習管理 v3.2</title>
+    <title>学習管理 v3.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -19,7 +19,7 @@
     <div id="login-screen" class="flex-1 flex flex-col items-center justify-center p-4">
         <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-sm w-full border border-slate-100">
             <i class="fas fa-lock text-4xl text-blue-500 mb-4"></i>
-            <h1 class="text-2xl font-bold text-slate-800 mb-2">学習管理 v3.2</h1>
+            <h1 class="text-2xl font-bold text-slate-800 mb-2">学習管理 v3.3</h1>
             <p class="text-sm text-slate-500 mb-6">本人確認が必要です</p>
             <button id="btn-login" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition shadow-md flex items-center justify-center">
                 <i class="fab fa-google mr-2"></i> Googleでログイン
@@ -30,7 +30,7 @@
     <div id="app-screen" class="hidden max-w-4xl mx-auto p-4 w-full">
         <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
             <div>
-                <h1 class="text-xl font-extrabold text-slate-800"><i class="fas fa-graduation-cap text-blue-600 mr-2"></i>学習管理 v3.2</h1>
+                <h1 class="text-xl font-extrabold text-slate-800"><i class="fas fa-graduation-cap text-blue-600 mr-2"></i>学習管理 v3.3</h1>
             </div>
             <div class="flex items-center gap-3">
                 <span id="user-name" class="text-xs font-bold text-slate-500 hidden md:inline"></span>
@@ -74,8 +74,8 @@
                 <div class="grid md:grid-cols-2 gap-6">
                     <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col">
                         <h3 class="text-sm font-bold mb-2">本日のスケジュール・メモ</h3>
-                        <textarea id="daily-memo" class="flex-1 w-full p-3 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-green-300 outline-none resize-none" placeholder="ここに書いたメモは、今日1日だけタスク画面の上に表示されます！"></textarea>
-                        <button onclick="saveMemo()" class="mt-3 w-full bg-green-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition">メモを保存して反映</button>
+                        <textarea id="daily-memo" class="flex-1 w-full p-3 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-green-300 outline-none resize-none" placeholder="今日の予定を入力して保存すると、タスク画面に表示されます。"></textarea>
+                        <button onclick="saveMemo()" class="mt-3 w-full bg-green-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition"><i class="fas fa-save mr-1"></i>保存してタスク画面へ</button>
                     </div>
                     <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
                         <h3 class="text-sm font-bold mb-2">学習時間の記録</h3>
@@ -174,12 +174,11 @@
         let jumonData = { physics: {}, chemistry: {}, math: {} };
         const JUMON_MAX = { physics: 162, chemistry: 270, math: 300 };
 
-        // 今日の日付を取得 (YYYY-MM-DD)
+        // 日付生成
         const getLocalDateString = (d = new Date()) => {
             return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         };
 
-        // 週間タスク管理用変数
         let weekOffset = 0;
         let currentWeekId = '';
         let allTasks = [];
@@ -213,13 +212,14 @@
             onSnapshot(query(getUserRef("tasks"), orderBy("createdAt", "desc")), (snap) => {
                 allTasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderTasks();
+            }, (error) => {
+                console.error("タスクの読み込みエラー:", error);
             });
 
-            // 2. 今日のメモ
+            // 2. メモの同期（データベースの値をタスク画面に反映）
             const todayStr = getLocalDateString();
             onSnapshot(doc(db, "users", currentUser.uid, "daily_memos", todayStr), (docSnap) => {
                 const text = docSnap.exists() ? docSnap.data().text : '';
-                document.getElementById('daily-memo').value = text;
                 const container = document.getElementById('today-memo-container');
                 if(text) {
                     document.getElementById('today-memo-display').innerText = text;
@@ -276,7 +276,7 @@
                 });
             });
 
-            // 5. 読書 (読了日数の自動計算を追加)
+            // 5. 読書 (日数計算)
             onSnapshot(query(getUserRef("reading"), orderBy("createdAt", "desc")), (snap) => {
                 const list = document.getElementById('reading-list');
                 list.innerHTML = '';
@@ -284,7 +284,6 @@
                     const r = docSnap.data();
                     let daysText = "";
                     
-                    // 読了日数の計算処理
                     if (r.start && r.end) {
                         const sDate = new Date(r.start);
                         const eDate = new Date(r.end);
@@ -359,50 +358,69 @@
             }
         }
 
-        // バグ修正: serverTimestamp() から Date.now() へ変更し、確実な保存と並び替えを実現
+        // 【修正】すべてのDB操作にエラー監視(try-catch)を追加しました
         window.addTask = async () => {
-            const sub = prompt("科目 (例: 数学):"); if(!sub) return;
-            const ttl = prompt("タスク内容:"); if(!ttl) return;
-            await addDoc(getUserRef("tasks"), { 
-                subject: sub, 
-                title: ttl, 
-                completed: false, 
-                weekId: currentWeekId,
-                createdAt: Date.now() 
-            });
+            try {
+                const sub = prompt("科目 (例: 数学):"); if(!sub) return;
+                const ttl = prompt("タスク内容:"); if(!ttl) return;
+                await addDoc(getUserRef("tasks"), { 
+                    subject: sub, 
+                    title: ttl, 
+                    completed: false, 
+                    weekId: currentWeekId,
+                    createdAt: Date.now() 
+                });
+            } catch (e) {
+                alert("【追加エラー】\\n" + e.message + "\\n※Firebaseのセキュリティルールが正しく設定されていない可能性があります。");
+            }
         };
 
-        // バグ修正: 保存ロジックも Date.now() に統一し、アラートを出して確実なフィードバック
+        // 【修正】メモ保存後、入力欄を空にしてタスクタブに自動で切り替わります
         window.saveMemo = async () => {
-            const text = document.getElementById('daily-memo').value;
-            const todayStr = getLocalDateString();
-            await setDoc(doc(db, "users", currentUser.uid, "daily_memos", todayStr), { text: text, date: todayStr, createdAt: Date.now() });
-            alert("本日のメモを保存し、データベースに登録しました。");
+            try {
+                const text = document.getElementById('daily-memo').value;
+                if(!text) return alert("メモを入力してください");
+                const todayStr = getLocalDateString();
+                
+                await setDoc(doc(db, "users", currentUser.uid, "daily_memos", todayStr), { text: text, date: todayStr, createdAt: Date.now() });
+                
+                document.getElementById('daily-memo').value = ""; // 入力欄をクリア
+                window.switchTab('tasks'); // タスクタブへ自動ジャンプ
+            } catch (e) {
+                alert("【保存エラー】\\n" + e.message + "\\n※Firebaseのセキュリティルールが正しく設定されていない可能性があります。");
+            }
         };
 
         window.addStudyTime = async () => {
-            const d = document.getElementById('time-date').value;
-            const sub = document.getElementById('time-subject').value;
-            const h = document.getElementById('time-hours').value || 0;
-            const m = document.getElementById('time-mins').value || 0;
-            if(!d || !sub || (h==0 && m==0)) return alert("日付、科目、時間をすべて入力してください");
-            await addDoc(getUserRef("study_time"), { date: d, subject: sub, hours: h, mins: m, createdAt: Date.now() });
-            document.getElementById('time-subject').value=''; document.getElementById('time-hours').value=''; document.getElementById('time-mins').value='';
+            try {
+                const d = document.getElementById('time-date').value;
+                const sub = document.getElementById('time-subject').value;
+                const h = document.getElementById('time-hours').value || 0;
+                const m = document.getElementById('time-mins').value || 0;
+                if(!d || !sub || (h==0 && m==0)) return alert("日付、科目、時間をすべて入力してください");
+                await addDoc(getUserRef("study_time"), { date: d, subject: sub, hours: h, mins: m, createdAt: Date.now() });
+                document.getElementById('time-subject').value=''; document.getElementById('time-hours').value=''; document.getElementById('time-mins').value='';
+            } catch (e) { alert("【エラー】" + e.message); }
         };
 
         window.addAkahon = async () => {
-            const d = document.getElementById('ak-date').value;
-            const sub = document.getElementById('ak-subject').value;
-            const yr = document.getElementById('ak-year').value;
-            const typ = document.getElementById('ak-type').value;
-            const sc = document.getElementById('ak-score').value;
-            if(!d || !sub || !yr || !sc) return alert('必須項目を入力してください');
-            await addDoc(getUserRef("akahon"), { date: d, subject: sub, year: yr, type: typ, score: sc, createdAt: Date.now() });
-            document.getElementById('ak-subject').value=''; document.getElementById('ak-year').value=''; document.getElementById('ak-score').value='';
+            try {
+                const d = document.getElementById('ak-date').value;
+                const sub = document.getElementById('ak-subject').value;
+                const yr = document.getElementById('ak-year').value;
+                const typ = document.getElementById('ak-type').value;
+                const sc = document.getElementById('ak-score').value;
+                if(!d || !sub || !yr || !sc) return alert('必須項目を入力してください');
+                await addDoc(getUserRef("akahon"), { date: d, subject: sub, year: yr, type: typ, score: sc, createdAt: Date.now() });
+                document.getElementById('ak-subject').value=''; document.getElementById('ak-year').value=''; document.getElementById('ak-score').value='';
+            } catch (e) { alert("【エラー】" + e.message); }
         };
-        window.updateAkahonDate = (id, val) => updateDoc(doc(db, "users", currentUser.uid, "akahon", id), { date: val });
 
-        // 重問のパーセンテージ・プログレスバー計算を追加
+        window.updateAkahonDate = async (id, val) => {
+            try { await updateDoc(doc(db, "users", currentUser.uid, "akahon", id), { date: val }); }
+            catch (e) { alert("【エラー】" + e.message); }
+        };
+
         window.renderJumonGrid = () => {
             const subj = document.getElementById('jumon-select').value;
             const max = JUMON_MAX[subj];
@@ -410,11 +428,11 @@
             const grid = document.getElementById('jumon-grid');
             let html = '';
             
-            let completedCount = 0; // 完了数をカウント
+            let completedCount = 0; 
 
             for(let i=1; i<=max; i++){
                 const dateVal = (data[i] && data[i].includes('-')) ? data[i] : ''; 
-                if (dateVal) completedCount++; // 日付があればカウントアップ
+                if (dateVal) completedCount++; 
 
                 const bg = dateVal ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 shadow-sm';
                 html += `<div class="border rounded-lg p-2 flex flex-col items-center ${bg} transition-colors">
@@ -424,31 +442,53 @@
             }
             grid.innerHTML = html;
 
-            // パーセンテージ計算と画面への反映
             const percentage = Math.floor((completedCount / max) * 100);
             document.getElementById('jumon-progress-text').innerText = `${completedCount} / ${max}問 (${percentage}%)`;
             document.getElementById('jumon-progress-bar').style.width = `${percentage}%`;
         };
 
         window.updateJumon = async (subj, num, val) => {
-            const ref = doc(db, "users", currentUser.uid, "problems", "jumon");
-            if(!jumonData[subj]) jumonData[subj] = {};
-            jumonData[subj][num] = val; 
-            await setDoc(ref, jumonData, { merge: true }); 
+            try {
+                const ref = doc(db, "users", currentUser.uid, "problems", "jumon");
+                if(!jumonData[subj]) jumonData[subj] = {};
+                jumonData[subj][num] = val; 
+                await setDoc(ref, jumonData, { merge: true }); 
+            } catch (e) { alert("【エラー】" + e.message); }
         };
 
-        window.toggleTask = (id, checked) => updateDoc(doc(db, "users", currentUser.uid, "tasks", id), { completed: checked });
-        window.delTask = (id) => { if(confirm("タスクを削除しますか？")) deleteDoc(doc(db, "users", currentUser.uid, "tasks", id)); };
+        window.toggleTask = async (id, checked) => {
+            try { await updateDoc(doc(db, "users", currentUser.uid, "tasks", id), { completed: checked }); }
+            catch (e) { alert("【エラー】" + e.message); }
+        };
+        
+        window.delTask = async (id) => { 
+            if(confirm("タスクを削除しますか？")) {
+                try { await deleteDoc(doc(db, "users", currentUser.uid, "tasks", id)); }
+                catch (e) { alert("【エラー】" + e.message); }
+            }
+        };
         
         window.addReading = async () => {
-            const ttl = document.getElementById('read-title').value;
-            const st = document.getElementById('read-start').value;
-            if(!ttl || !st) return alert("タイトルを入力してください");
-            await addDoc(getUserRef("reading"), { title: ttl, start: st, end: "", createdAt: Date.now() });
-            document.getElementById('read-title').value='';
+            try {
+                const ttl = document.getElementById('read-title').value;
+                const st = document.getElementById('read-start').value;
+                if(!ttl || !st) return alert("タイトルを入力してください");
+                await addDoc(getUserRef("reading"), { title: ttl, start: st, end: "", createdAt: Date.now() });
+                document.getElementById('read-title').value='';
+            } catch (e) { alert("【エラー】" + e.message); }
         };
-        window.updateReadEnd = (id, val) => updateDoc(doc(db, "users", currentUser.uid, "reading", id), { end: val });
-        window.delDoc = (col, id) => { if(confirm("削除しますか？")) deleteDoc(doc(db, "users", currentUser.uid, col, id)); };
+
+        window.updateReadEnd = async (id, val) => {
+            try { await updateDoc(doc(db, "users", currentUser.uid, "reading", id), { end: val }); }
+            catch (e) { alert("【エラー】" + e.message); }
+        };
+
+        window.delDoc = async (col, id) => { 
+            if(confirm("削除しますか？")) {
+                try { await deleteDoc(doc(db, "users", currentUser.uid, col, id)); }
+                catch (e) { alert("【エラー】" + e.message); }
+            }
+        };
 
         window.switchTab = (tabId) => {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
